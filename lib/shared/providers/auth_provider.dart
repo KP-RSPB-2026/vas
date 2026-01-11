@@ -13,6 +13,15 @@ class AuthNotifier extends StateNotifier<User?> {
   }
 
   void _loadUser() {
+    // Check if token exists
+    final token = StorageService.getAccessToken();
+    if (token == null || token.isEmpty) {
+      // No token, user not logged in
+      state = null;
+      return;
+    }
+
+    // Token exists, load user data
     final userData = StorageService.getUserData();
     if (userData['id'] != null) {
       state = User(

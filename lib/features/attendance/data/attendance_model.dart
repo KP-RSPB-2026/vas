@@ -1,3 +1,5 @@
+import '../../../core/utils/date_time_helper.dart';
+
 class Attendance {
   final String id;
   final String userId;
@@ -53,8 +55,15 @@ class Attendance {
   }
 
   bool get hasCheckedOut => checkOutTime != null;
-  bool get isLate => status == 'late';
-  bool get isEarly => status == 'early_leave';
+  
+  // Calculate isLate based on check-in time in GMT+8
+  bool get isLate => DateTimeHelper.isLate(checkInTime);
+  
+  // Calculate isEarly based on check-out time in GMT+8
+  bool get isEarly => checkOutTime != null 
+      ? DateTimeHelper.isEarly(checkOutTime!) 
+      : false;
+      
   bool get isCompleted => status == 'completed';
 }
 
