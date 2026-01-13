@@ -15,7 +15,8 @@ class PhotoConfirmationScreen extends StatefulWidget {
   });
 
   @override
-  State<PhotoConfirmationScreen> createState() => _PhotoConfirmationScreenState();
+  State<PhotoConfirmationScreen> createState() =>
+      _PhotoConfirmationScreenState();
 }
 
 class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
@@ -29,7 +30,7 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
 
   void _handleSubmit() {
     final reason = _reasonController.text.trim();
-    
+
     // If late/early, reason is required
     if (widget.isLate && reason.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -67,10 +68,10 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
             Text(
               'Presensi',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 20,
-                  ),
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 20,
+              ),
               textAlign: TextAlign.left,
             ),
             const SizedBox(height: 24),
@@ -106,7 +107,9 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
                 decoration: InputDecoration(
                   hintText: 'keterangan',
                   hintStyle: TextStyle(
-                    color: AppColors.textSecondary.withOpacity(0.5),
+                    color: AppColors.textSecondary.withAlpha(
+                      (0.5 * 255).round(),
+                    ),
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.all(16),
@@ -118,9 +121,9 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
             // Info text
             Text(
               'Pastikan data sudah benar',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.primary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppColors.primary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -139,10 +142,7 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
                 ),
                 child: const Text(
                   'Submit',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ),

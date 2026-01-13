@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
 enum AttendanceStatus {
-  disabled,   // Gray - tidak bisa ditekan
-  active,     // Blue - bisa ditekan
-  success,    // Green - selesai, tepat waktu
-  late,       // Red - selesai, terlambat/dini
+  disabled, // Gray - tidak bisa ditekan
+  active, // Blue - bisa ditekan
+  success, // Green - selesai, tepat waktu
+  late, // Red - selesai, terlambat/dini
 }
 
 class AttendanceCard extends StatelessWidget {
@@ -70,10 +70,10 @@ class AttendanceCard extends StatelessWidget {
             Text(
               time,
               style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    color: _getTextColor(),
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: _getTextColor(),
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
 
@@ -81,9 +81,9 @@ class AttendanceCard extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: _getTextColor(),
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: _getTextColor(),
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 4),
 
@@ -91,8 +91,8 @@ class AttendanceCard extends StatelessWidget {
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: _getTextColor().withOpacity(0.9),
-                  ),
+                color: _getTextColor().withAlpha((0.9 * 255).round()),
+              ),
               textAlign: TextAlign.center,
             ),
           ],

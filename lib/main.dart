@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/constants/app_constants.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -14,17 +16,22 @@ void main() async {
   // Initialize services
   await _initializeApp();
 
+  // Initialize locale data for intl (e.g., id_ID)
+  try {
+    await initializeDateFormatting('id_ID');
+    Intl.defaultLocale = 'id_ID';
+    AppLogger.i('Intl locale initialized: id_ID');
+  } catch (e) {
+    AppLogger.e('Failed to initialize intl locale', e);
+  }
+
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 Future<void> _initializeApp() async {

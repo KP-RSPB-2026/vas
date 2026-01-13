@@ -61,7 +61,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           context.go('/home');
         }
       } else {
-        _showError('Login gagal. Silakan coba lagi.');
+        final serverMessage =
+            response.data['error'] ?? 'Login gagal. Silakan coba lagi.';
+        _showError(serverMessage);
       }
     } catch (e) {
       AppLogger.e('Login error', e);
@@ -76,10 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
     );
   }
 
@@ -108,7 +107,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       // Logo or Title
                       Text(
                         'Login',
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
                               fontSize: 32,
@@ -119,9 +119,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Text(
                         'Selamat datang kembali!',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.primary,
-                              fontSize: 14,
-                            ),
+                          color: AppColors.primary,
+                          fontSize: 14,
+                        ),
                         textAlign: TextAlign.left,
                       ),
                       const SizedBox(height: 32),
@@ -155,18 +155,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _obscurePassword
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () {
+                            setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            );
+                          },
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Password tidak boleh kosong';
+                          }
+                          return null;
+                        },
                       ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
                       const SizedBox(height: 24),
 
                       // Login button
