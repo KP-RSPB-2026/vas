@@ -29,6 +29,7 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
   bool _isInArea = false;
   Attendance? _todayAttendance;
   bool _isLoadingAttendance = false;
+  DateTime? _lastTodayFetchAt;
 
   @override
   void initState() {
@@ -75,10 +76,22 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
   }
      
   Future<void> _loadTodayAttendance() async {
+    final now = DateTime.now();
+    if (_lastTodayFetchAt != null && now.difference(_lastTodayFetchAt!) < const Duration(seconds: 15)) {
+      return;
+    }
+
     setState(() => _isLoadingAttendance = true);
 
     try {
-      final response = await ApiService().getHistory(limit: 1);
+      final now = DateTime.now();
+      final response = await ApiService().getHistory(
+        limit: 1,
+        page: 1,
+        month: now.month,
+        year: now.year,
+        includePhotos: false,
+      );
       if (response.statusCode == 200 && response.data['success'] == true) {
         final List attendances = response.data['data'];
         if (attendances.isNotEmpty) {
@@ -96,6 +109,7 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
           }
         }
       }
+      _lastTodayFetchAt = DateTime.now();
     } catch (e) {
       AppLogger.e('Error loading today attendance', e);
     } finally {

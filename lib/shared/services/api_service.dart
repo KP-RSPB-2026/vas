@@ -18,9 +18,9 @@ class ApiService {
         baseUrl: ApiConstants.baseUrl,
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
+        // Anggap status <500 sebagai respons biasa supaya 401/403 dsb bisa diproses manual
+        validateStatus: (status) => status != null && status < 500,
       ),
     );
 
@@ -30,7 +30,12 @@ class ApiService {
         onRequest: (options, handler) {
           // Add token to header if available
           final token = StorageService.getAccessToken();
-          if (token != null) {
+          final isAuthPath =
+              options.path.startsWith(ApiConstants.login) ||
+              options.path.startsWith(ApiConstants.logout);
+
+          // Jangan kirim Authorization untuk login/logout supaya tidak mengganggu autentikasi
+          if (!isAuthPath && token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
           AppLogger.d('REQUEST[${options.method}] => ${options.uri}');
@@ -38,6 +43,9 @@ class ApiService {
         },
         onResponse: (response, handler) {
           AppLogger.i('RESPONSE[${response.statusCode}] => ${response.data}');
+          if (response.statusCode == 401) {
+            _handleUnauthorized();
+          }
           return handler.next(response);
         },
         onError: (error, handler) {
@@ -48,10 +56,22 @@ class ApiService {
           if (error.response?.data != null) {
             AppLogger.e('Response body: ${error.response?.data}');
           }
+          if (error.response?.statusCode == 401) {
+            _handleUnauthorized();
+          }
           return handler.next(error);
         },
       ),
     );
+  }
+
+  void _handleUnauthorized() {
+    try {
+      // Clear stored tokens/user and rely on listeners to redirect.
+      StorageService.clearAll();
+    } catch (_) {
+      // best-effort
+    }
   }
 
   Dio get dio => _dio;
@@ -60,10 +80,7 @@ class ApiService {
   Future<Response> login(String email, String password) async {
     return await _dio.post(
       ApiConstants.login,
-      data: {
-        'email': email,
-        'password': password,
-      },
+      data: {'email': email, 'password': password},
     );
   }
 
@@ -75,10 +92,7 @@ class ApiService {
   Future<Response> validateLocation(double latitude, double longitude) async {
     return await _dio.get(
       ApiConstants.validateLocation,
-      queryParameters: {
-        'latitude': latitude,
-        'longitude': longitude,
-      },
+      queryParameters: {'latitude': latitude, 'longitude': longitude},
     );
   }
 
@@ -92,7 +106,7 @@ class ApiService {
     // Read file as bytes to ensure it's readable
     final file = File(photoPath);
     final bytes = await file.readAsBytes();
-    
+
     AppLogger.i('CheckIn API call:');
     AppLogger.i('- Photo path: $photoPath');
     AppLogger.i('- File exists: ${file.existsSync()}');
@@ -100,7 +114,7 @@ class ApiService {
     AppLogger.i('- Latitude: $latitude');
     AppLogger.i('- Longitude: $longitude');
     AppLogger.i('- Reason: $reason');
-    
+
     final formData = FormData.fromMap({
       'photo': MultipartFile.fromBytes(
         bytes,
@@ -112,13 +126,14 @@ class ApiService {
       if (reason != null && reason.isNotEmpty) 'reason': reason,
     });
 
-    AppLogger.i('FormData fields: ${formData.fields.map((e) => '${e.key}=${e.value}').join(', ')}');
-    AppLogger.i('FormData files: ${formData.files.map((e) => '${e.key}: ${e.value.filename} (${e.value.length} bytes)').join(', ')}');
-
-    return await _dio.post(
-      ApiConstants.checkIn,
-      data: formData,
+    AppLogger.i(
+      'FormData fields: ${formData.fields.map((e) => '${e.key}=${e.value}').join(', ')}',
     );
+    AppLogger.i(
+      'FormData files: ${formData.files.map((e) => '${e.key}: ${e.value.filename} (${e.value.length} bytes)').join(', ')}',
+    );
+
+    return await _dio.post(ApiConstants.checkIn, data: formData);
   }
 
   Future<Response> checkOut({
@@ -130,30 +145,38 @@ class ApiService {
     // Read file as bytes to ensure it's readable
     final file = File(photoPath);
     final bytes = await file.readAsBytes();
-    
+
     final formData = FormData.fromMap({
-      'photo': MultipartFile.fromBytes(
-        bytes,
-        filename: 'photo.jpg',
-      ),
+      'photo': MultipartFile.fromBytes(bytes, filename: 'photo.jpg'),
       'latitude': latitude.toString(),
       'longitude': longitude.toString(),
       if (reason != null && reason.isNotEmpty) 'reason': reason,
     });
 
-    return await _dio.post(
-      ApiConstants.checkOut,
-      data: formData,
-    );
+    return await _dio.post(ApiConstants.checkOut, data: formData);
   }
 
-  Future<Response> getHistory({int limit = 30, int offset = 0}) async {
+  Future<Response> getHistory({
+    int? month,
+    int? year,
+    int? page,
+    int limit = 31,
+    int? offset,
+    bool includePhotos = true,
+    String? userId,
+  }) async {
+    final params = <String, dynamic>{
+      'limit': limit,
+      if (offset != null) 'offset': offset,
+      if (page != null) 'page': page,
+      if (month != null) 'month': month,
+      if (year != null) 'year': year,
+      'include_photos': includePhotos,
+      if (userId != null) 'user_id': userId,
+    };
     return await _dio.get(
       ApiConstants.attendanceHistory,
-      queryParameters: {
-        'limit': limit,
-        'offset': offset,
-      },
+      queryParameters: params,
     );
   }
 
@@ -162,10 +185,15 @@ class ApiService {
   }
 
   // User methods (Admin)
-  Future<Response> getAllUsers({String? role}) async {
+  Future<Response> getAllUsers({String? role, String? search, int page = 1, int limit = 20}) async {
     return await _dio.get(
       ApiConstants.users,
-      queryParameters: role != null ? {'role': role} : null,
+      queryParameters: {
+        if (role != null) 'role': role,
+        if (search != null && search.isNotEmpty) 'search': search,
+        'page': page,
+        'limit': limit,
+      },
     );
   }
 }

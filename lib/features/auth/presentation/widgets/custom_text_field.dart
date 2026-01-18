@@ -39,7 +39,7 @@ class CustomTextField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: TextStyle(
-          color: AppColors.textSecondary.withOpacity(0.5),
+          color: AppColors.textSecondary.withAlpha((0.5 * 255).round()),
         ),
         suffixIcon: suffixIcon,
         filled: true,
@@ -60,7 +60,10 @@ class CustomTextField extends StatelessWidget {
           borderRadius: BorderRadius.circular(4),
           borderSide: BorderSide(color: AppColors.error),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
