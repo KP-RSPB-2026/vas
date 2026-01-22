@@ -17,10 +17,10 @@ class AppConstants {
   static const int workEndHour = 16;
   static const int workEndMinute = 0;
   
-  // Office location (untuk validasi) - sesuai emulator dan Supabase
-  static const double officeLat = 37.42199830;
-  static const double officeLng = -122.08400000;
-  static const int officeRadius = 50; // meters
+  // Office location (untuk validasi) - sesuai data Supabase
+  static const double officeLat = -1.27876700;
+  static const double officeLng = 116.81771000;
+  static const int officeRadius = 500; // meters
   
   // Image settings
   static const int maxImageSize = 5 * 1024 * 1024; // 5MB

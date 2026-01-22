@@ -76,19 +76,21 @@ class _PhotoConfirmationScreenState extends State<PhotoConfirmationScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Photo preview
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                height: 320,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Image.file(
-                  widget.photoFile,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
+            // Photo preview (3:4 aspect ratio)
+            AspectRatio(
+              aspectRatio: 3 / 4,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Image.file(
+                    widget.photoFile,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
                 ),
               ),
             ),

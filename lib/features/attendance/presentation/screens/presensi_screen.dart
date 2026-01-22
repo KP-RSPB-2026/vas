@@ -12,6 +12,8 @@ import '../../../../shared/services/location_service.dart';
 import '../../../../shared/services/camera_service.dart';
 import '../../../../shared/services/api_service.dart';
 import '../../data/attendance_model.dart';
+import '../../data/today_attendance_cache.dart';
+import '../../../admin/data/office_location_provider.dart';
 import '../widgets/attendance_card.dart';
 import 'photo_confirmation_screen.dart';
 
@@ -27,16 +29,20 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
   Timer? _timer;
   Position? _currentPosition;
   bool _isInArea = false;
+  double _officeLat = AppConstants.officeLat;
+  double _officeLng = AppConstants.officeLng;
+  int _officeRadius = AppConstants.officeRadius;
   Attendance? _todayAttendance;
   bool _isLoadingAttendance = false;
+  bool _isLoadingDialogVisible = false;
   DateTime? _lastTodayFetchAt;
+  static const Duration _todayCacheTtl = Duration(seconds: 10);
 
   @override
   void initState() {
     super.initState();
     _startTimer();
-    _initLocation();
-    _loadTodayAttendance();
+    _loadInitial();
   }
 
   @override
@@ -62,29 +68,63 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
           final distance = LocationHelper.calculateDistance(
             position.latitude,
             position.longitude,
-            AppConstants.officeLat,
-            AppConstants.officeLng,
+            _officeLat,
+            _officeLng,
           );
-          _isInArea = distance <= AppConstants.officeRadius.toDouble();
+          _isInArea = distance <= _officeRadius.toDouble();
           
-          AppLogger.i('Distance to office: ${distance.toStringAsFixed(2)} meters (radius: ${AppConstants.officeRadius}m)');
+          AppLogger.i('Distance to office: ${distance.toStringAsFixed(2)} meters (radius: ${_officeRadius}m)');
         });
       }
     } catch (e) {
       AppLogger.e('Error getting location', e);
     }
   }
-     
-  Future<void> _loadTodayAttendance() async {
+  
+  Future<void> _loadInitial() async {
+    setState(() => _isLoadingAttendance = true);
+    await Future.wait([
+      _hydrateOfficeLocation(),
+      _loadTodayAttendance(showSpinner: false),
+    ]);
+    await _initLocation();
+    if (mounted) {
+      setState(() => _isLoadingAttendance = false);
+    }
+  }
+
+  Future<void> _hydrateOfficeLocation() async {
+    final remote = await ref.read(officeLocationProvider.future);
+    if (remote == null) return;
+    setState(() {
+      _officeLat = remote.latitude;
+      _officeLng = remote.longitude;
+      _officeRadius = remote.radius;
+    });
+  }
+
+  Future<void> _loadTodayAttendance({bool showSpinner = true}) async {
     final now = DateTime.now();
     if (_lastTodayFetchAt != null && now.difference(_lastTodayFetchAt!) < const Duration(seconds: 15)) {
       return;
     }
 
-    setState(() => _isLoadingAttendance = true);
+    final todayDateStr = now.toIso8601String().split('T').first; // yyyy-MM-dd
+
+    final cached = ref.read(todayAttendanceCacheProvider);
+    if (cached != null && now.difference(cached.fetchedAt) < _todayCacheTtl) {
+      if (mounted) {
+        setState(() => _todayAttendance = cached.attendance);
+      }
+      _lastTodayFetchAt = cached.fetchedAt;
+      return;
+    }
+
+    if (showSpinner && mounted) {
+      setState(() => _isLoadingAttendance = true);
+    }
 
     try {
-      final now = DateTime.now();
       final response = await ApiService().getHistory(
         limit: 1,
         page: 1,
@@ -96,24 +136,26 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
         final List attendances = response.data['data'];
         if (attendances.isNotEmpty) {
           final attendance = Attendance.fromJson(attendances.first);
-          final today = DateTime.now();
-          final attendanceDate = DateTime.parse(attendance.date);
-
-          // Check if attendance is from today
-          if (attendanceDate.year == today.year &&
-              attendanceDate.month == today.month &&
-              attendanceDate.day == today.day) {
-            if (mounted) {
-              setState(() => _todayAttendance = attendance);
-            }
+          final isToday = attendance.date == todayDateStr;
+          if (isToday && mounted) {
+            setState(() => _todayAttendance = attendance);
           }
+          ref.read(todayAttendanceCacheProvider.notifier).state = TodayAttendanceCacheEntry(
+            attendance: isToday ? attendance : null,
+            fetchedAt: DateTime.now(),
+          );
+        } else {
+          ref.read(todayAttendanceCacheProvider.notifier).state = TodayAttendanceCacheEntry(
+            attendance: null,
+            fetchedAt: DateTime.now(),
+          );
         }
       }
       _lastTodayFetchAt = DateTime.now();
     } catch (e) {
       AppLogger.e('Error loading today attendance', e);
     } finally {
-      if (mounted) {
+      if (mounted && showSpinner) {
         setState(() => _isLoadingAttendance = false);
       }
     }
@@ -186,6 +228,8 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
         longitude: _currentPosition!.longitude,
         reason: reason,
       );
+
+      if (!mounted) return;
 
       if (response.statusCode == 201 && response.data['success'] == true) {
         final attendance = Attendance.fromJson(response.data['data']['attendance']);
@@ -271,6 +315,8 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
         reason: reason,
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 200 && response.data['success'] == true) {
         final attendance = Attendance.fromJson(response.data['data']['attendance']);
         setState(() => _todayAttendance = attendance);
@@ -288,17 +334,26 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
   }
 
   void _showLoading() {
+    if (_isLoadingDialogVisible || !mounted) return;
+    _isLoadingDialogVisible = true;
     showDialog(
       context: context,
       barrierDismissible: false,
+      useRootNavigator: true,
       builder: (context) => const Center(
         child: CircularProgressIndicator(),
       ),
-    );
+    ).whenComplete(() {
+      _isLoadingDialogVisible = false;
+    });
   }
 
   void _hideLoading() {
-    Navigator.of(context).pop();
+    if (!_isLoadingDialogVisible || !mounted) return;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
   }
 
   void _showError(String message) {
@@ -327,8 +382,10 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: () async {
-                await _initLocation();
-                await _loadTodayAttendance();
+                await Future.wait([
+                  _initLocation(),
+                  _loadTodayAttendance(showSpinner: false),
+                ]);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),

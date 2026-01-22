@@ -1,6 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart' as pdf;
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 import 'attendance_detail_page.dart';
 import 'attendance_status.dart';
 import '../widgets/history_card.dart';
@@ -28,6 +34,7 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
   int selectedYear = DateTime.now().year;
   bool _loading = false;
   bool _loadingMore = false;
+  bool _exporting = false;
   String? _error;
   List<Attendance> _items = [];
   bool _hasMore = false;
@@ -123,6 +130,24 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
             .titleLarge
             ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
         elevation: 0,
+        actions: [
+          if (widget.employeeId != null)
+            IconButton(
+              onPressed: _loading || _exporting
+                  ? null
+                  : () {
+                      _exportPdf(filtered);
+                    },
+              tooltip: 'Export PDF',
+              icon: _exporting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.picture_as_pdf_outlined),
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -153,7 +178,7 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: Text(
-                      'Total ${_total} record',
+                      'Total $_total record',
                       style: const TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
@@ -254,6 +279,149 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _exportPdf(List<Attendance> filtered) async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+
+    try {
+      final redEntries = filtered.where((a) => a.isLate || a.isEarly).toList()
+        ..sort(
+          (a, b) => DateTimeHelper
+              .toGMT8(a.checkInTime)
+              .compareTo(DateTimeHelper.toGMT8(b.checkInTime)),
+        );
+      if (redEntries.isEmpty) {
+        _showSnack('Tidak ada keterlambatan/pulang dini di bulan ini');
+        return;
+      }
+
+      final monthLabel = DateFormat.MMMM('id_ID').format(DateTime(selectedYear, selectedMonth));
+      pdf.PdfColor pdfColor(Color c) => pdf.PdfColor.fromInt(c.value);
+      pw.Widget timeCell(String text, bool isFlagged) {
+        final bg = isFlagged ? AppColors.error : AppColors.success;
+        final fg = isFlagged ? AppColors.textWhite : AppColors.textPrimary;
+        return pw.Container(
+          padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+          color: pdfColor(bg),
+          child: pw.Text(text, style: pw.TextStyle(color: pdfColor(fg), fontSize: 11)),
+        );
+      }
+
+      pw.Widget plainCell(String text) => pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: pw.Text(text, style: const pw.TextStyle(fontSize: 11)),
+          );
+
+      final rows = redEntries.map((a) {
+        final date = DateFormat('d MMM y', 'id_ID').format(DateTimeHelper.toGMT8(a.checkInTime));
+        final ci = DateTimeHelper.formatTime(a.checkInTime);
+        final co = a.checkOutTime != null ? DateTimeHelper.formatTime(a.checkOutTime!) : '-';
+        final status = [
+          if (a.isLate) 'Terlambat',
+          if (a.isEarly) 'Pulang dini',
+        ].join(' & ');
+        final reasonParts = <String>[
+          if (a.isLate && (a.checkInReason ?? '').trim().isNotEmpty) 'In: ${a.checkInReason!.trim()}',
+          if (a.isEarly && (a.checkOutReason ?? '').trim().isNotEmpty) 'Out: ${a.checkOutReason!.trim()}',
+        ];
+        final note = reasonParts.isEmpty ? '-' : reasonParts.join(' | ');
+
+        return pw.TableRow(
+          children: [
+            plainCell(date),
+            timeCell(ci, a.isLate),
+            timeCell(co, a.isEarly),
+            plainCell(status),
+            plainCell(note),
+          ],
+        );
+      }).toList();
+
+      final doc = pw.Document();
+      doc.addPage(
+        pw.Page(
+          pageFormat: pdf.PdfPageFormat.a4.landscape,
+          orientation: pw.PageOrientation.landscape,
+          build: (ctx) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Laporan Kehadiran', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 4),
+                pw.Text(widget.employeeName ?? 'Karyawan', style: const pw.TextStyle(fontSize: 12)),
+                pw.Text('Periode: $monthLabel $selectedYear', style: const pw.TextStyle(fontSize: 12)),
+                pw.Text('Dibuat: ${DateFormat('d MMM y HH:mm').format(DateTime.now())}', style: const pw.TextStyle(fontSize: 10)),
+                pw.SizedBox(height: 12),
+                pw.Table(
+                  border: pw.TableBorder.symmetric(inside: pw.BorderSide.none, outside: pw.BorderSide.none),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(1.3),
+                    1: const pw.FlexColumnWidth(1.0),
+                    2: const pw.FlexColumnWidth(1.0),
+                    3: const pw.FlexColumnWidth(1.3),
+                    4: const pw.FlexColumnWidth(2.0),
+                  },
+                  children: [
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(color: pdf.PdfColor.fromInt(0xFFE5E7EB)),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                          child: pw.Text('Tanggal', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                          child: pw.Text('Check-in', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                          child: pw.Text('Check-out', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                          child: pw.Text('Status', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                          child: pw.Text('Keterangan', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    ...rows,
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      final bytes = await doc.save();
+      final dir = await getTemporaryDirectory();
+      final safeName = (widget.employeeName ?? widget.employeeId ?? 'karyawan').replaceAll(RegExp('[^a-zA-Z0-9_-]'), '_');
+      final fileName = 'riwayat_${safeName}_${selectedYear}-${selectedMonth.toString().padLeft(2, '0')}.pdf';
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsBytes(bytes, flush: true);
+
+      await Share.shareXFiles([
+        XFile(file.path, mimeType: 'application/pdf'),
+      ], text: 'Laporan keterlambatan/pulang dini $monthLabel $selectedYear');
+    } catch (e) {
+      _showSnack('Gagal export: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _exporting = false);
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

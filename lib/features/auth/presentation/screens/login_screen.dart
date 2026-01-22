@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../shared/services/api_service.dart';
@@ -65,14 +68,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             response.data['error'] ?? 'Login gagal. Silakan coba lagi.';
         _showError(serverMessage);
       }
+    } on DioException catch (e) {
+      AppLogger.e('Login error', e);
+      _showError(_mapLoginError(e));
     } catch (e) {
       AppLogger.e('Login error', e);
-      _showError('Email atau password salah');
+      _showError('Terjadi kesalahan tak terduga. Silakan coba lagi.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  String _mapLoginError(DioException e) {
+    // Give user-friendly errors for connectivity/timeouts vs auth failure.
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      return 'Koneksi timeout. Periksa internet Anda lalu coba lagi.';
+    }
+
+    if (e.type == DioExceptionType.connectionError || e.error is SocketException) {
+      return 'Tidak bisa terhubung ke server. Periksa koneksi atau coba beberapa saat lagi.';
+    }
+
+    final status = e.response?.statusCode;
+    if (status == 500) {
+      return 'Server sedang bermasalah. Silakan coba lagi nanti.';
+    }
+
+    final serverMessage = e.response?.data is Map<String, dynamic>
+        ? e.response?.data['error']?.toString()
+        : null;
+
+    return serverMessage?.isNotEmpty == true
+        ? serverMessage!
+        : 'Email atau password salah';
   }
 
   void _showError(String message) {

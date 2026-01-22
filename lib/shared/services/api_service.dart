@@ -88,6 +88,11 @@ class ApiService {
     return await _dio.post(ApiConstants.logout);
   }
 
+  // Office location (Admin)
+  Future<Response> getOfficeLocation() async {
+    return await _dio.get('/office/location');
+  }
+
   // Location methods
   Future<Response> validateLocation(double latitude, double longitude) async {
     return await _dio.get(
