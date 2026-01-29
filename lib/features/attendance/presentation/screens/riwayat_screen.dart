@@ -402,7 +402,7 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
       final bytes = await doc.save();
       final dir = await getTemporaryDirectory();
       final safeName = (widget.employeeName ?? widget.employeeId ?? 'karyawan').replaceAll(RegExp('[^a-zA-Z0-9_-]'), '_');
-      final fileName = 'riwayat_${safeName}_${selectedYear}-${selectedMonth.toString().padLeft(2, '0')}.pdf';
+      final fileName = 'riwayat_${safeName}_$selectedYear-${selectedMonth.toString().padLeft(2, '0')}.pdf';
       final file = File('${dir.path}/$fileName');
       await file.writeAsBytes(bytes, flush: true);
 

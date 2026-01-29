@@ -43,8 +43,8 @@ class SettingsScreen extends ConsumerWidget {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    user?.email ?? '',
+                    Text(
+                      user?.nomorKaryawan ?? '-',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 8),
@@ -71,6 +71,16 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+
+          ListTile(
+            leading: const Icon(Icons.lock_outline, color: AppColors.primary),
+            title: const Text('Ganti Password'),
+            onTap: () {
+              final isAdmin = user?.isAdmin == true;
+              context.push(isAdmin ? '/admin/change-password' : '/home/change-password');
+            },
+          ),
+          const Divider(height: 12, thickness: 0.6, color: Colors.grey),
 
           // Logout button
           ListTile(

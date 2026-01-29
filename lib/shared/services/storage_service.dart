@@ -30,12 +30,12 @@ class StorageService {
   // User data management
   static Future<void> saveUserData({
     required String userId,
-    required String email,
+    required String nomorKaryawan,
     required String name,
     required String role,
   }) async {
     await _prefs?.setString(AppConstants.keyUserId, userId);
-    await _prefs?.setString(AppConstants.keyUserEmail, email);
+    await _prefs?.setString(AppConstants.keyUserNomor, nomorKaryawan);
     await _prefs?.setString(AppConstants.keyUserName, name);
     await _prefs?.setString(AppConstants.keyUserRole, role);
   }
@@ -43,7 +43,7 @@ class StorageService {
   static Map<String, String?> getUserData() {
     return {
       'id': _prefs?.getString(AppConstants.keyUserId),
-      'email': _prefs?.getString(AppConstants.keyUserEmail),
+      'nomor_karyawan': _prefs?.getString(AppConstants.keyUserNomor),
       'name': _prefs?.getString(AppConstants.keyUserName),
       'role': _prefs?.getString(AppConstants.keyUserRole),
     };
@@ -51,7 +51,7 @@ class StorageService {
 
   static Future<void> clearUserData() async {
     await _prefs?.remove(AppConstants.keyUserId);
-    await _prefs?.remove(AppConstants.keyUserEmail);
+    await _prefs?.remove(AppConstants.keyUserNomor);
     await _prefs?.remove(AppConstants.keyUserName);
     await _prefs?.remove(AppConstants.keyUserRole);
   }

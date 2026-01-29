@@ -7,6 +7,7 @@ import '../../features/attendance/presentation/screens/riwayat_screen.dart';
 import '../../features/attendance/presentation/screens/settings_screen.dart';
 import '../../features/admin/presentation/screens/employee_list_screen.dart';
 import '../../features/admin/presentation/screens/employee_history_screen.dart';
+import '../../features/auth/presentation/screens/change_password_screen.dart';
 import '../../shared/providers/auth_provider.dart';
 import 'shells.dart';
 import '../../features/auth/presentation/screens/forbidden_screen.dart';
@@ -69,6 +70,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/home/settings',
             builder: (context, state) => const SettingsScreen(),
           ),
+          GoRoute(
+            path: '/home/change-password',
+            builder: (context, state) => const ChangePasswordScreen(),
+          ),
         ],
       ),
       ShellRoute(
@@ -81,6 +86,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/admin/settings',
             builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: '/admin/change-password',
+            builder: (context, state) => const ChangePasswordScreen(),
           ),
           GoRoute(
             path: '/admin/employee/:id',

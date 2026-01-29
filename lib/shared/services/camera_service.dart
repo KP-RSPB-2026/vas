@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../../core/utils/app_logger.dart';
 
 class CameraService {
@@ -60,6 +61,36 @@ class CameraService {
     } catch (e) {
       AppLogger.e('Error taking selfie', e);
       return null;
+    }
+  }
+
+  static Future<File> compressImage(File file,
+      {int targetWidth = 900, int quality = 70}) async {
+    try {
+      final targetPath =
+          '${file.parent.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final result = await FlutterImageCompress.compressAndGetFile(
+        file.path,
+        targetPath,
+        quality: quality,
+        minWidth: targetWidth,
+        keepExif: false,
+      );
+
+      if (result == null) {
+        AppLogger.w('Compression returned null, using original file');
+        return file;
+      }
+
+      final originalSize = await file.length();
+      final compressedSize = await result.length();
+      AppLogger.i(
+          'Compressed photo: ${originalSize ~/ 1024}KB -> ${compressedSize ~/ 1024}KB');
+      return File(result.path);
+    } catch (e) {
+      AppLogger.e('Error compressing image', e);
+      return file;
     }
   }
 

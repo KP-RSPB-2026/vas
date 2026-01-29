@@ -48,7 +48,7 @@ class HistoryCard extends StatelessWidget {
                 child: Text(
                   dateLabel,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w400,
                     color: AppColors.textPrimary,
                   ),
                 ),

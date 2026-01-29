@@ -26,9 +26,9 @@ class AuthNotifier extends StateNotifier<User?> {
     if (userData['id'] != null) {
       state = User(
         id: userData['id']!,
-        email: userData['email']!,
-        name: userData['name']!,
-        role: userData['role']!,
+        nomorKaryawan: userData['nomor_karyawan'] ?? '',
+        name: userData['name'] ?? '',
+        role: userData['role'] ?? 'user',
       );
     }
   }
@@ -37,7 +37,7 @@ class AuthNotifier extends StateNotifier<User?> {
     state = user;
     StorageService.saveUserData(
       userId: user.id,
-      email: user.email,
+      nomorKaryawan: user.nomorKaryawan,
       name: user.name,
       role: user.role,
     );

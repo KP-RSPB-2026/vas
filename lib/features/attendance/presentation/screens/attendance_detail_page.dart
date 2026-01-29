@@ -3,6 +3,7 @@ import '../widgets/status_header.dart';
 import '../widgets/photo_box.dart';
 import 'attendance_status.dart';
 import '../../../../shared/services/api_service.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/date_time_helper.dart';
 
 class AttendanceDetailPage extends StatefulWidget {
@@ -38,6 +39,14 @@ class _AttendanceDetailPageState extends State<AttendanceDetailPage> {
         final checkInTime = DateTime.parse(d['check_in_time']);
         final checkOutTime = d['check_out_time'] != null ? DateTime.parse(d['check_out_time']) : null;
         setState(() {
+          String resolvePhoto(String? path) {
+            if (path == null || path.isEmpty) return '';
+            if (path.startsWith('http')) return path;
+            final base = ApiConstants.baseUrl;
+            final origin = base.contains('/api') ? base.split('/api').first : base;
+            return '$origin$path';
+          }
+
           _data = {
             'checkIn': DateTimeHelper.formatTime(checkInTime),
             'checkOut': checkOutTime != null ? DateTimeHelper.formatTime(checkOutTime) : null,
@@ -45,8 +54,8 @@ class _AttendanceDetailPageState extends State<AttendanceDetailPage> {
             'checkOutStatus': checkOutTime != null
                 ? ((d['is_early_check_out'] ?? false) ? AttendanceStatus.early : AttendanceStatus.success)
                 : null,
-            'checkInPhotoUrl': d['check_in_photo_url'] as String?,
-            'checkOutPhotoUrl': d['check_out_photo_url'] as String?,
+            'checkInPhotoUrl': resolvePhoto(d['check_in_photo_url'] as String?),
+            'checkOutPhotoUrl': resolvePhoto(d['check_out_photo_url'] as String?),
             'checkInReason': d['check_in_reason'] ?? '-',
             'checkOutReason': d['check_out_reason'] ?? '-',
           };

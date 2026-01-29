@@ -11,6 +11,7 @@ class ApiService {
   ApiService._internal();
 
   late final Dio _dio;
+  Future<bool>? _refreshingFuture;
 
   void init() {
     _dio = Dio(
@@ -41,11 +42,27 @@ class ApiService {
           AppLogger.d('REQUEST[${options.method}] => ${options.uri}');
           return handler.next(options);
         },
-        onResponse: (response, handler) {
+        onResponse: (response, handler) async {
           AppLogger.i('RESPONSE[${response.statusCode}] => ${response.data}');
+
           if (response.statusCode == 401) {
+            final options = response.requestOptions;
+            final isAuthPath = _isAuthPath(options.path);
+            final alreadyRetried = options.extra['retried'] == true;
+
+            if (!isAuthPath && !alreadyRetried) {
+              final refreshed = await _refreshToken();
+              if (refreshed) {
+                options.headers['Authorization'] = 'Bearer ${StorageService.getAccessToken()}';
+                options.extra['retried'] = true;
+                final clone = await _dio.fetch(options);
+                return handler.resolve(clone);
+              }
+            }
+
             _handleUnauthorized();
           }
+
           return handler.next(response);
         },
         onError: (error, handler) {
@@ -55,9 +72,6 @@ class ApiService {
           );
           if (error.response?.data != null) {
             AppLogger.e('Response body: ${error.response?.data}');
-          }
-          if (error.response?.statusCode == 401) {
-            _handleUnauthorized();
           }
           return handler.next(error);
         },
@@ -74,18 +88,87 @@ class ApiService {
     }
   }
 
+  bool _isAuthPath(String path) {
+    return path.startsWith(ApiConstants.login) ||
+        path.startsWith(ApiConstants.logout) ||
+        path.startsWith(ApiConstants.refresh);
+  }
+
+  Future<bool> _refreshToken() {
+    if (_refreshingFuture != null) {
+      return _refreshingFuture!;
+    }
+
+    final refreshToken = StorageService.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) {
+      _refreshingFuture = Future.value(false);
+      return _refreshingFuture!;
+    }
+
+    _refreshingFuture = () async {
+      try {
+        final refreshDio = Dio(
+          BaseOptions(
+            baseUrl: ApiConstants.baseUrl,
+            connectTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 30),
+            headers: {'Content-Type': 'application/json'},
+            validateStatus: (status) => status != null && status < 500,
+          ),
+        );
+
+        final res = await refreshDio.post(
+          ApiConstants.refresh,
+          data: {'refresh_token': refreshToken},
+        );
+
+        if (res.statusCode == 200 && res.data['success'] == true) {
+          final session = res.data['data']['session'];
+          final newAccess = session['access_token'];
+          final newRefresh = session['refresh_token'];
+
+          await StorageService.saveToken(newAccess, newRefresh);
+          _dio.options.headers['Authorization'] = 'Bearer $newAccess';
+          return true;
+        }
+      } catch (e) {
+        AppLogger.e('Failed to refresh token', e);
+      } finally {
+        _refreshingFuture = null;
+      }
+
+      await StorageService.clearAll();
+      return false;
+    }();
+
+    return _refreshingFuture!;
+  }
+
   Dio get dio => _dio;
 
   // Auth methods
-  Future<Response> login(String email, String password) async {
+  Future<Response> login({required String nomorKaryawan, required String password}) async {
     return await _dio.post(
       ApiConstants.login,
-      data: {'email': email, 'password': password},
+      data: {'nomor_karyawan': nomorKaryawan, 'password': password},
     );
   }
 
   Future<Response> logout() async {
     return await _dio.post(ApiConstants.logout);
+  }
+
+  Future<Response> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    return await _dio.post(
+      ApiConstants.changePassword,
+      data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
   }
 
   // Office location (Admin)

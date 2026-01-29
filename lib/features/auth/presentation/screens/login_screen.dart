@@ -22,14 +22,14 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _nomorController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _nomorController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -41,8 +41,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final response = await ApiService().login(
-        _emailController.text.trim(),
-        _passwordController.text,
+        nomorKaryawan: _nomorController.text.trim(),
+        password: _passwordController.text,
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -57,7 +57,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // Set user in provider
         ref.read(authProvider.notifier).setUser(loginResponse.user);
 
-        AppLogger.i('Login successful: ${loginResponse.user.email}');
+        AppLogger.i('Login successful: ${loginResponse.user.nomorKaryawan}');
 
         // Navigate to home
         if (mounted) {
@@ -65,7 +65,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
       } else {
         final serverMessage =
-            response.data['error'] ?? 'Login gagal. Silakan coba lagi.';
+          response.data['error'] ?? 'Login gagal. Silakan coba lagi.';
         _showError(serverMessage);
       }
     } on DioException catch (e) {
@@ -103,8 +103,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         : null;
 
     return serverMessage?.isNotEmpty == true
-        ? serverMessage!
-        : 'Email atau password salah';
+      ? serverMessage!
+      : 'No. staff atau password salah';
   }
 
   void _showError(String message) {
@@ -158,18 +158,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Email field
+                      // No. Staff field
                       CustomTextField(
-                        controller: _emailController,
-                        label: 'Email',
-                        hintText: 'email',
-                        keyboardType: TextInputType.emailAddress,
+                        controller: _nomorController,
+                        label: 'No. Staff',
+                        hintText: 'no. staff',
+                        keyboardType: TextInputType.text,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Email tidak boleh kosong';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Format email tidak valid';
+                            return 'No. staff tidak boleh kosong';
                           }
                           return null;
                         },

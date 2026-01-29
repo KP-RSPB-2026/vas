@@ -8,6 +8,8 @@ class ApiConstants {
   // Auth endpoints
   static const String login = '/auth/login';
   static const String logout = '/auth/logout';
+  static const String refresh = '/auth/refresh';
+  static const String changePassword = '/auth/change-password';
 
   // Location endpoints
   static const String validateLocation = '/location/validate';

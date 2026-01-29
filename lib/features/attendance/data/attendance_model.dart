@@ -38,25 +38,36 @@ class Attendance {
   });
 
   factory Attendance.fromJson(Map<String, dynamic> json) {
+    final rawDate = json['date']?.toString() ?? '';
+    final dateOnly = rawDate.contains('T') ? rawDate.split('T').first : rawDate;
+
     return Attendance(
-      id: json['id'] ?? '',
-      userId: json['user_id'] ?? '',
-      checkInTime: DateTime.parse(json['check_in_time']),
-      checkInPhotoUrl: json['check_in_photo_url'] ?? '',
-      checkInLatitude: (json['check_in_latitude'] ?? 0).toDouble(),
-      checkInLongitude: (json['check_in_longitude'] ?? 0).toDouble(),
+      id: json['id']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '',
+      checkInTime: DateTime.parse(json['check_in_time'].toString()),
+        checkInPhotoUrl: json['check_in_photo_url'] ?? '',
+        checkInLatitude: double.tryParse(json['check_in_latitude']?.toString() ?? '') ?? 0,
+        checkInLongitude: double.tryParse(json['check_in_longitude']?.toString() ?? '') ?? 0,
       checkInReason: json['check_in_reason'],
       checkOutTime: json['check_out_time'] != null
-          ? DateTime.parse(json['check_out_time'])
+          ? DateTime.parse(json['check_out_time'].toString())
           : null,
       checkOutPhotoUrl: json['check_out_photo_url'],
-      checkOutLatitude: json['check_out_latitude']?.toDouble(),
-      checkOutLongitude: json['check_out_longitude']?.toDouble(),
+        checkOutLatitude: json['check_out_latitude'] != null
+          ? double.tryParse(json['check_out_latitude'].toString())
+          : null,
+        checkOutLongitude: json['check_out_longitude'] != null
+          ? double.tryParse(json['check_out_longitude'].toString())
+          : null,
       checkOutReason: json['check_out_reason'],
-      status: json['status'] ?? 'checked_in',
-      date: json['date'] ?? '',
-      isLateFromServer: json['is_late_check_in'],
-      isEarlyFromServer: json['is_early_check_out'],
+      status: json['status']?.toString() ?? 'checked_in',
+          date: dateOnly,
+      isLateFromServer: json['is_late_check_in'] is bool
+          ? json['is_late_check_in']
+          : (json['is_late_check_in'] is num ? (json['is_late_check_in'] as num) == 1 : null),
+      isEarlyFromServer: json['is_early_check_out'] is bool
+          ? json['is_early_check_out']
+          : (json['is_early_check_out'] is num ? (json['is_early_check_out'] as num) == 1 : null),
     );
   }
 

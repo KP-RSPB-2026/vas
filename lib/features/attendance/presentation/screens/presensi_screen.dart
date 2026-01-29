@@ -222,8 +222,10 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
     _showLoading();
 
     try {
+      final compressed = await CameraService.compressImage(photoFile,
+          targetWidth: 900, quality: 70);
       final response = await ApiService().checkIn(
-        photoPath: photoFile.path,
+        photoPath: compressed.path,
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
         reason: reason,
@@ -308,8 +310,10 @@ class _PresensiScreenState extends ConsumerState<PresensiScreen> {
     _showLoading();
 
     try {
+      final compressed = await CameraService.compressImage(photoFile,
+          targetWidth: 900, quality: 70);
       final response = await ApiService().checkOut(
-        photoPath: photoFile.path,
+        photoPath: compressed.path,
         latitude: _currentPosition!.latitude,
         longitude: _currentPosition!.longitude,
         reason: reason,
